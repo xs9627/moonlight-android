@@ -810,6 +810,10 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                 devName.endsWith(" Touchpad") &&
                 dev.getSources() == (InputDevice.SOURCE_KEYBOARD | InputDevice.SOURCE_MOUSE);
 
+        context.isDJIVirtualJoystick =
+                context.vendorId == 11427 &&
+                devName.endsWith("DJI Virtual Joystick");
+
         InputDevice.MotionRange leftTriggerRange = getMotionRangeForJoystickAxis(dev, MotionEvent.AXIS_LTRIGGER);
         InputDevice.MotionRange rightTriggerRange = getMotionRangeForJoystickAxis(dev, MotionEvent.AXIS_RTRIGGER);
         InputDevice.MotionRange brakeRange = getMotionRangeForJoystickAxis(dev, MotionEvent.AXIS_BRAKE);
@@ -856,8 +860,12 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                     // DS4 has Select and Mode buttons (possibly mapped non-standard)
                     context.hasSelect = true;
                     context.hasMode = true;
-                }
-                else {
+                } else if (context.isDJIVirtualJoystick) {
+                    context.leftStickXAxis = MotionEvent.AXIS_RX;
+                    context.leftStickYAxis = MotionEvent.AXIS_Z;
+                    context.rightStickXAxis = MotionEvent.AXIS_X;
+                    context.rightStickYAxis = MotionEvent.AXIS_Y;
+                } else {
                     // If it's not a non-standard DS4 controller, it's probably an Xbox controller or
                     // other sane controller that uses RX and RY for right stick and Z and RZ for triggers.
                     context.rightStickXAxis = MotionEvent.AXIS_RX;
@@ -1587,7 +1595,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             handleDeadZone(leftStickVector, context.leftStickDeadzoneRadius);
 
             context.leftStickX = (short) (leftStickVector.getX() * 0x7FFE);
-            context.leftStickY = (short) (-leftStickVector.getY() * 0x7FFE);
+            context.leftStickY = (short) ((context.isDJIVirtualJoystick ? 1 : -1) * leftStickVector.getY() * 0x7FFE);
         }
 
         if (context.rightStickXAxis != -1 && context.rightStickYAxis != -1) {
@@ -1596,7 +1604,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             handleDeadZone(rightStickVector, context.rightStickDeadzoneRadius);
 
             context.rightStickX = (short) (rightStickVector.getX() * 0x7FFE);
-            context.rightStickY = (short) (-rightStickVector.getY() * 0x7FFE);
+            context.rightStickY = (short) ((context.isDJIVirtualJoystick ? 1 : -1) * rightStickVector.getY() * 0x7FFE);
         }
 
         if (context.leftTriggerAxis != -1 && context.rightTriggerAxis != -1) {
@@ -2988,6 +2996,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         public boolean hasJoystickAxes;
         public boolean pendingExit;
         public boolean isDualShockStandaloneTouchpad;
+        public boolean isDJIVirtualJoystick;
 
         public int emulatingButtonFlags = 0;
         public boolean hasSelect;
